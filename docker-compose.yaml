@@ -1,0 +1,56 @@
+version: "3.5"
+services:
+  foundry:
+    build: ./contracts
+    container_name: foundry
+    volumes:
+      - ./contracts:/app/contracts
+    ports:
+      - "8545:8545"  # Porta RPC usada pela rede Anvil
+    networks:
+      - safe-gas-station
+  api: &api
+    build: ./api
+    container_name: api
+    command: npm run start:dev
+    expose:
+      - "3000"
+    volumes:
+      - ./api/src:/app/src
+      - ./api/node_modules:/app/node_modules
+      - ./docker/foundry:/app/src/docker/foundry
+    depends_on:
+      - foundry
+    networks:
+      - safe-gas-station
+  front:
+    build: ./front
+    container_name: front
+    command: npm run watch
+    volumes:
+      - ./front/src:/app/src
+      - ./docker/foundry:/app/src/docker/foundry
+      - shared-volume:/app/dist
+    depends_on:
+      - api
+    networks:
+      - safe-gas-station
+  nginx: 
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - shared-volume:/app
+    ports:
+      - 80:80
+    depends_on:
+      - front
+    networks:
+      - safe-gas-station
+
+networks:
+  safe-gas-station:
+    name: safe-gas-station
+    
+volumes:
+  shared-volume:
